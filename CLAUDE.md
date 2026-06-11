@@ -1,74 +1,74 @@
 # CLAUDE.md
 
-Factory Inventory Management System Demo with GitHub integration - Full-stack application with Vue 3 frontend, Python FastAPI backend, and in-memory mock data (no database).
-
-## Critical Tool Usage Rules
-
-### Subagents
-Use the Task tool with these specialized subagents for appropriate tasks:
-
-- **vue-expert**: Use for Vue 3 frontend features, UI components, styling, and client-side functionality
-  - Examples: Creating components, fixing reactivity issues, performance optimization, complex state management
-  - **MANDATORY RULE: ANY time you need to create or significantly modify a .vue file, you MUST delegate to vue-expert**
-- **code-reviewer**: Use after writing significant code to review quality and best practices
-- **Explore**: Use for understanding codebase structure, searching for patterns, or answering questions about how components work
-- **general-purpose**: Use for complex multi-step tasks or when other agents don't fit
-
-### Skills
-- **backend-api-test** skill: Use when writing or modifying tests in `tests/backend` directory with pytest and FastAPI TestClient
-
-### MCP Tools
-- **ALWAYS use GitHub MCP tools** (`mcp__github__*`) for ALL GitHub operations
-  - Exception: Local branches only - use `git checkout -b` instead of `mcp__github__create_branch`
-- **ALWAYS use Playwright MCP tools** (`mcp__playwright__*`) for browser testing
-  - Test against: `http://localhost:3000` (frontend), `http://localhost:8001` (API)
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Stack
+
 - **Frontend**: Vue 3 + Composition API + Vite (port 3000)
 - **Backend**: Python FastAPI (port 8001)
-- **Data**: JSON files in `server/data/` loaded via `server/mock_data.py`
+- **Data**: JSON files in `server/data/` loaded into memory at startup via `server/mock_data.py` — changes don't persist across restarts
 
-## Quick Start
+## Commands
 
 ```bash
 # Backend
-cd server
-uv run python main.py
+cd server && uv run python main.py
 
 # Frontend
-cd client
-npm install && npm run dev
+cd client && npm run dev
+
+# Tests (run from tests/ directory)
+cd tests && uv run pytest backend/ -v
+
+# Single test file
+cd tests && uv run pytest backend/test_inventory.py -v
+
+# Single test
+cd tests && uv run pytest backend/test_inventory.py::test_function_name -v
 ```
 
-## Key Patterns
+## Architecture
 
-**Filter System**: 4 filters (Time Period, Warehouse, Category, Order Status) apply to all data via query params
-**Data Flow**: Vue filters → `client/src/api.js` → FastAPI → In-memory filtering → Pydantic validation → Computed properties
-**Reactivity**: Raw data in refs (`allOrders`, `inventoryItems`), derived data in computed properties
+### Filter System (cross-cutting concern)
 
-## API Endpoints
-- `GET /api/inventory` - Filters: warehouse, category
-- `GET /api/orders` - Filters: warehouse, category, status, month
-- `GET /api/dashboard/summary` - All filters
-- `GET /api/demand`, `/api/backlog` - No filters
-- `GET /api/spending/*` - Summary, monthly, categories, transactions
+`useFilters.js` is a module-level singleton — refs are declared outside the function, so all components share one filter state. When filters change, each view re-calls the API with `getCurrentFilters()` which maps `selectedPeriod` → `month` query param and `selectedLocation` → `warehouse` query param.
 
-## Common Issues
-1. Use unique keys in v-for (not `index`) - use `sku`, `month`, etc.
-2. Validate dates before `.getMonth()` calls
-3. Update Pydantic models when changing JSON data structure
-4. Inventory filters don't support month (no time dimension)
-5. Revenue goals: $800K/month single, $9.6M YTD all months
+**Filter support by endpoint:**
+- `/api/inventory` — warehouse, category (no month/time dimension)
+- `/api/orders` — warehouse, category, status, month
+- `/api/dashboard/summary` — all four filters
+- `/api/demand`, `/api/backlog` — no filters
 
-## File Locations
-- Views: `client/src/views/*.vue`
-- API Client: `client/src/api.js`
-- Backend: `server/main.py`, `server/mock_data.py`
-- Data: `server/data/*.json`
-- Styles: `client/src/App.vue`
+### i18n System
 
-## Design System
-- Colors: Slate/gray (#0f172a, #64748b, #e2e8f0)
-- Status: green/blue/yellow/red
-- Charts: Custom SVG, CSS Grid for layouts
-- No emojis in UI
+`useI18n.js` is also a module-level singleton persisted to `localStorage`. Currency switches automatically with locale (en → USD, ja → JPY). Product names, customer names, and warehouse names require explicit translation via `translateProductName()`, `translateCustomerName()`, `translateWarehouse()` — they are not handled by the `t()` key lookup.
+
+### Data Flow
+
+Vue view → `client/src/api.js` (axios, hardcoded to `http://localhost:8001/api`) → FastAPI → in-memory filtering via `apply_filters()` + `filter_by_month()` → Pydantic response validation
+
+### Backend Filtering
+
+`main.py` has two shared filter utilities: `apply_filters()` for warehouse/category/status and `filter_by_month()` for month/quarter. Month filtering matches against `order_date` using string containment. Quarter support maps Q1–Q4 2025 to month lists via `QUARTER_MAP`.
+
+### Tests
+
+Tests use FastAPI `TestClient` (synchronous). `conftest.py` adds `server/` to `sys.path` and imports `app` directly. `pytest.ini` sets `testpaths = backend` so always run from the `tests/` directory.
+
+## Subagents
+
+- **vue-expert**: Mandatory for creating or significantly modifying `.vue` files
+- **code-reviewer**: Use after writing significant code
+- **Explore**: Use for codebase structure questions
+
+## Code Style
+
+- Always document non-obvious logic changes with comments
+
+## Key Constraints
+
+- Inventory filters don't support month — no time dimension in inventory data
+- Revenue goals: $800K/month single month, $9.6M YTD all months
+- Use unique keys in `v-for` (sku, month, id — never index)
+- Validate dates before calling `.getMonth()` — some order dates may be null/missing
+- Update Pydantic models in `main.py` when changing JSON data structure in `server/data/`
