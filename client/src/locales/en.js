@@ -6,6 +6,7 @@ export default {
     orders: 'Orders',
     finance: 'Finance',
     demandForecast: 'Demand Forecast',
+    restocking: 'Restocking',
     companyName: 'Catalyst Components',
     subtitle: 'Inventory Management System'
   },
@@ -112,6 +113,10 @@ export default {
     onTimeDelivery: 'On-Time Delivery',
     itemsCount: '{count} items',
     quantity: 'Qty',
+    customerOrders: 'Customer Orders',
+    restockingOrders: 'Restocking Orders',
+    noRestockingOrders: 'No restocking orders yet. Place an order from the Restocking tab.',
+    leadTime: 'Lead Time',
     table: {
       orderNumber: 'Order Number',
       orderId: 'Order ID',
@@ -309,6 +314,33 @@ export default {
     english: 'English',
     japanese: 'Japanese',
     selectLanguage: 'Select Language'
+  },
+
+  // Restocking
+  restocking: {
+    title: 'Restocking',
+    description: 'Set a budget and get recommendations for items to restock based on demand forecasts',
+    budget: 'Available Budget',
+    recommendations: 'Recommended Items',
+    noBudget: 'Increase your budget to see restocking recommendations',
+    placeOrder: 'Place Order',
+    placing: 'Placing Order...',
+    orderPlaced: 'Order Placed Successfully',
+    orderNumber: 'Order Number',
+    expectedDelivery: 'Expected Delivery',
+    leadTime: '{days}-day delivery lead time',
+    placeAnother: 'Place Another Order',
+    itemsSelected: 'items selected',
+    selectItems: 'Select at least one item to place an order',
+    total: 'Total',
+    table: {
+      name: 'Item Name',
+      sku: 'SKU',
+      trend: 'Trend',
+      forecastQty: 'Forecast Qty',
+      unitCost: 'Unit Cost',
+      totalCost: 'Total Cost'
+    }
   },
 
   // Common

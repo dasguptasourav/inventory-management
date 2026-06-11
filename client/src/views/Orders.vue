@@ -5,73 +5,142 @@
       <p>{{ t('orders.description') }}</p>
     </div>
 
-    <div v-if="loading" class="loading">{{ t('common.loading') }}</div>
-    <div v-else-if="error" class="error">{{ error }}</div>
-    <div v-else>
-      <div class="stats-grid">
-        <div class="stat-card success">
-          <div class="stat-label">{{ t('status.delivered') }}</div>
-          <div class="stat-value">{{ getOrdersByStatus('Delivered').length }}</div>
+    <!-- Sub-tab toggle -->
+    <div class="sub-tabs">
+      <button :class="['sub-tab', { active: activeTab === 'customer' }]" @click="switchTab('customer')">
+        {{ t('orders.customerOrders') }}
+      </button>
+      <button :class="['sub-tab', { active: activeTab === 'restocking' }]" @click="switchTab('restocking')">
+        {{ t('orders.restockingOrders') }}
+      </button>
+    </div>
+
+    <!-- Customer Orders tab -->
+    <div v-if="activeTab === 'customer'">
+      <div v-if="loading" class="loading">{{ t('common.loading') }}</div>
+      <div v-else-if="error" class="error">{{ error }}</div>
+      <div v-else>
+        <div class="stats-grid">
+          <div class="stat-card success">
+            <div class="stat-label">{{ t('status.delivered') }}</div>
+            <div class="stat-value">{{ getOrdersByStatus('Delivered').length }}</div>
+          </div>
+          <div class="stat-card info">
+            <div class="stat-label">{{ t('status.shipped') }}</div>
+            <div class="stat-value">{{ getOrdersByStatus('Shipped').length }}</div>
+          </div>
+          <div class="stat-card warning">
+            <div class="stat-label">{{ t('status.processing') }}</div>
+            <div class="stat-value">{{ getOrdersByStatus('Processing').length }}</div>
+          </div>
+          <div class="stat-card danger">
+            <div class="stat-label">{{ t('status.backordered') }}</div>
+            <div class="stat-value">{{ getOrdersByStatus('Backordered').length }}</div>
+          </div>
         </div>
-        <div class="stat-card info">
-          <div class="stat-label">{{ t('status.shipped') }}</div>
-          <div class="stat-value">{{ getOrdersByStatus('Shipped').length }}</div>
-        </div>
-        <div class="stat-card warning">
-          <div class="stat-label">{{ t('status.processing') }}</div>
-          <div class="stat-value">{{ getOrdersByStatus('Processing').length }}</div>
-        </div>
-        <div class="stat-card danger">
-          <div class="stat-label">{{ t('status.backordered') }}</div>
-          <div class="stat-value">{{ getOrdersByStatus('Backordered').length }}</div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">{{ t('orders.allOrders') }} ({{ orders.length }})</h3>
+          </div>
+          <div class="table-container">
+            <table class="orders-table">
+              <thead>
+                <tr>
+                  <th class="col-order-number">{{ t('orders.table.orderNumber') }}</th>
+                  <th class="col-customer">{{ t('orders.table.customer') }}</th>
+                  <th class="col-items">{{ t('orders.table.items') }}</th>
+                  <th class="col-status">{{ t('orders.table.status') }}</th>
+                  <th class="col-date">{{ t('orders.table.orderDate') }}</th>
+                  <th class="col-date">{{ t('orders.table.expectedDelivery') }}</th>
+                  <th class="col-value">{{ t('orders.table.totalValue') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="order in orders" :key="order.id">
+                  <td class="col-order-number"><strong>{{ order.order_number }}</strong></td>
+                  <td class="col-customer">{{ translateCustomerName(order.customer) }}</td>
+                  <td class="col-items">
+                    <details class="items-details">
+                      <summary class="items-summary">
+                        {{ t('orders.itemsCount', { count: order.items.length }) }}
+                      </summary>
+                      <div class="items-dropdown">
+                        <div v-for="(item, idx) in order.items" :key="idx" class="item-entry">
+                          <span class="item-name">{{ translateProductName(item.name) }}</span>
+                          <span class="item-meta">{{ t('orders.quantity') }}: {{ item.quantity }} @ {{ currencySymbol }}{{ item.unit_price }}</span>
+                        </div>
+                      </div>
+                    </details>
+                  </td>
+                  <td class="col-status">
+                    <span :class="['badge', getOrderStatusClass(order.status)]">
+                      {{ t(`status.${order.status.toLowerCase()}`) }}
+                    </span>
+                  </td>
+                  <td class="col-date">{{ formatDate(order.order_date) }}</td>
+                  <td class="col-date">{{ formatDate(order.expected_delivery) }}</td>
+                  <td class="col-value"><strong>{{ currencySymbol }}{{ order.total_value.toLocaleString() }}</strong></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
+    </div>
 
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">{{ t('orders.allOrders') }} ({{ orders.length }})</h3>
-        </div>
-        <div class="table-container">
-          <table class="orders-table">
-            <thead>
-              <tr>
-                <th class="col-order-number">{{ t('orders.table.orderNumber') }}</th>
-                <th class="col-customer">{{ t('orders.table.customer') }}</th>
-                <th class="col-items">{{ t('orders.table.items') }}</th>
-                <th class="col-status">{{ t('orders.table.status') }}</th>
-                <th class="col-date">{{ t('orders.table.orderDate') }}</th>
-                <th class="col-date">{{ t('orders.table.expectedDelivery') }}</th>
-                <th class="col-value">{{ t('orders.table.totalValue') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="order in orders" :key="order.id">
-                <td class="col-order-number"><strong>{{ order.order_number }}</strong></td>
-                <td class="col-customer">{{ translateCustomerName(order.customer) }}</td>
-                <td class="col-items">
-                  <details class="items-details">
-                    <summary class="items-summary">
-                      {{ t('orders.itemsCount', { count: order.items.length }) }}
-                    </summary>
-                    <div class="items-dropdown">
-                      <div v-for="(item, idx) in order.items" :key="idx" class="item-entry">
-                        <span class="item-name">{{ translateProductName(item.name) }}</span>
-                        <span class="item-meta">{{ t('orders.quantity') }}: {{ item.quantity }} @ {{ currencySymbol }}{{ item.unit_price }}</span>
+    <!-- Restocking Orders tab -->
+    <div v-else-if="activeTab === 'restocking'">
+      <div v-if="restockingLoading" class="loading">{{ t('common.loading') }}</div>
+      <div v-else-if="restockingError" class="error">{{ restockingError }}</div>
+      <div v-else-if="restockingOrders.length === 0" class="no-restocking">
+        {{ t('orders.noRestockingOrders') }}
+      </div>
+      <div v-else>
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">{{ t('orders.restockingOrders') }} ({{ restockingOrders.length }})</h3>
+          </div>
+          <div class="table-container">
+            <table class="orders-table">
+              <thead>
+                <tr>
+                  <th class="col-order-number">{{ t('orders.table.orderNumber') }}</th>
+                  <th class="col-items">{{ t('orders.table.items') }}</th>
+                  <th class="col-status">{{ t('orders.table.status') }}</th>
+                  <th class="col-date">{{ t('orders.table.orderDate') }}</th>
+                  <th class="col-date">{{ t('orders.table.expectedDelivery') }}</th>
+                  <th class="col-lead">{{ t('orders.leadTime') }}</th>
+                  <th class="col-value">{{ t('orders.table.totalValue') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="order in restockingOrders" :key="order.id">
+                  <td class="col-order-number"><strong>{{ order.order_number }}</strong></td>
+                  <td class="col-items">
+                    <details class="items-details">
+                      <summary class="items-summary">
+                        {{ t('orders.itemsCount', { count: order.items.length }) }}
+                      </summary>
+                      <div class="items-dropdown">
+                        <div v-for="(item, idx) in order.items" :key="idx" class="item-entry">
+                          <span class="item-name">{{ item.name }}</span>
+                          <span class="item-meta">{{ t('orders.quantity') }}: {{ item.quantity }} @ {{ currencySymbol }}{{ item.unit_price }}</span>
+                        </div>
                       </div>
-                    </div>
-                  </details>
-                </td>
-                <td class="col-status">
-                  <span :class="['badge', getOrderStatusClass(order.status)]">
-                    {{ t(`status.${order.status.toLowerCase()}`) }}
-                  </span>
-                </td>
-                <td class="col-date">{{ formatDate(order.order_date) }}</td>
-                <td class="col-date">{{ formatDate(order.expected_delivery) }}</td>
-                <td class="col-value"><strong>{{ currencySymbol }}{{ order.total_value.toLocaleString() }}</strong></td>
-              </tr>
-            </tbody>
-          </table>
+                    </details>
+                  </td>
+                  <td class="col-status">
+                    <span class="badge info">{{ order.status }}</span>
+                  </td>
+                  <td class="col-date">{{ formatDate(order.order_date) }}</td>
+                  <td class="col-date">{{ formatDate(order.expected_delivery) }}</td>
+                  <td class="col-lead">{{ order.lead_time_days }} {{ t('dashboard.inventoryShortages.days') }}</td>
+                  <td class="col-value"><strong>{{ currencySymbol }}{{ order.total_value.toLocaleString() }}</strong></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -95,6 +164,33 @@ export default {
     const loading = ref(true)
     const error = ref(null)
     const orders = ref([])
+
+    // Sub-tab state
+    const activeTab = ref('customer')
+    const restockingOrders = ref([])
+    const restockingLoading = ref(false)
+    const restockingError = ref(null)
+    const restockingLoaded = ref(false)
+
+    const loadRestockingOrders = async () => {
+      try {
+        restockingLoading.value = true
+        restockingError.value = null
+        restockingOrders.value = await api.getRestockingOrders()
+      } catch (err) {
+        restockingError.value = 'Failed to load restocking orders: ' + err.message
+      } finally {
+        restockingLoading.value = false
+        restockingLoaded.value = true
+      }
+    }
+
+    const switchTab = (tab) => {
+      activeTab.value = tab
+      if (tab === 'restocking' && !restockingLoaded.value) {
+        loadRestockingOrders()
+      }
+    }
 
     // Use shared filters
     const {
@@ -160,6 +256,11 @@ export default {
       loading,
       error,
       orders,
+      activeTab,
+      restockingOrders,
+      restockingLoading,
+      restockingError,
+      switchTab,
       getOrdersByStatus,
       getOrderStatusClass,
       formatDate,
@@ -172,6 +273,48 @@ export default {
 </script>
 
 <style scoped>
+/* Sub-tab toggle */
+.sub-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 0;
+}
+
+.sub-tab {
+  padding: 0.625rem 1.25rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-size: 0.938rem;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sub-tab:hover {
+  color: #0f172a;
+}
+
+.sub-tab.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+}
+
+.col-lead {
+  width: 110px;
+}
+
+.no-restocking {
+  padding: 3rem;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.938rem;
+}
+
 /* Fixed table layout to prevent column shifting */
 .orders-table {
   table-layout: fixed;
